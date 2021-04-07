@@ -43,7 +43,43 @@ public class SQL {
 
         public Builder where(String... conditions) {
             statement.whereConditions.addAll(Arrays.asList(conditions));
-            statement.andor = statement.whereConditions;
+            statement.lastThings = statement.whereConditions;
+            return this;
+        }
+
+        public Builder groupBy(String... columns) {
+            statement.groupBy.addAll(Arrays.asList(columns));
+            return this;
+        }
+
+        public Builder having(String... conditions) {
+            statement.having.addAll(Arrays.asList(conditions));
+            statement.lastThings = statement.having;
+            return this;
+        }
+
+        public Builder join(String... joins) {
+            statement.join.addAll(Arrays.asList(joins));
+            return this;
+        }
+
+        public Builder innerJoin(String... joins) {
+            statement.innerJoin.addAll(Arrays.asList(joins));
+            return this;
+        }
+
+        public Builder outerJoin(String... joins) {
+            statement.outerJoin.addAll(Arrays.asList(joins));
+            return this;
+        }
+
+        public Builder leftOuterJoin(String... joins) {
+            statement.leftOuterJoin.addAll(Arrays.asList(joins));
+            return this;
+        }
+
+        public Builder rightOuterJoin(String... joins) {
+            statement.rightOuterJoin.addAll(Arrays.asList(joins));
             return this;
         }
 
@@ -58,17 +94,17 @@ public class SQL {
         }
 
         public Builder and() {
-            statement.andor.add(AND);
+            statement.lastThings.add(AND);
             return this;
         }
 
         public Builder or() {
-            statement.andor.add(OR);
+            statement.lastThings.add(OR);
             return this;
         }
 
         public Builder orderBy(String... orderCondition) {
-            statement.orderBys.addAll(Arrays.asList(orderCondition));
+            statement.orderBy.addAll(Arrays.asList(orderCondition));
             return this;
         }
 
@@ -120,10 +156,17 @@ public class SQL {
         private final List<String> selects = new LinkedList<>();
         private final List<String> tables = new LinkedList<>();
         private final List<String> whereConditions = new LinkedList<>();
-        private final List<String> orderBys = new LinkedList<>();
+        private final List<String> orderBy = new LinkedList<>();
         private final List<String> columns = new LinkedList<>();
         private final List<String> values = new LinkedList<>();
-        private List<String> andor = new LinkedList<>();
+        private final List<String> groupBy = new LinkedList<>();
+        private final List<String> having = new LinkedList<>();
+        private List<String> lastThings = new LinkedList<>();
+        private final List<String> join = new LinkedList<>();
+        private final List<String> innerJoin = new LinkedList<>();
+        private final List<String> outerJoin = new LinkedList<>();
+        private final List<String> leftOuterJoin = new LinkedList<>();
+        private final List<String> rightOuterJoin = new LinkedList<>();
 
         private static class StringWrapper {
             private final StringBuilder builder;
@@ -169,6 +212,7 @@ public class SQL {
                     query = updateQuery(builder);
                     break;
                 default:
+                    cleanStatement();
                     return null;
             }
             cleanStatement();
@@ -184,20 +228,36 @@ public class SQL {
             selects.clear();
             tables.clear();
             whereConditions.clear();
-            orderBys.clear();
+            orderBy.clear();
             columns.clear();
             values.clear();
-            andor.clear();
+            lastThings.clear();
+            join.clear();
+            innerJoin.clear();
+            outerJoin.clear();
+            leftOuterJoin.clear();
+            rightOuterJoin.clear();
         }
 
         private String selectQuery(StringWrapper builder) {
             sqlAppender(builder, "SELECT" + (distinct ? " DISTINCT" : ""), selects, "", "", ", ");
             sqlAppender(builder, "FROM", tables, "", "", ", ");
             sqlAppender(builder, "WHERE", whereConditions, "(", ")", " AND ");
-            sqlAppender(builder, "ORDER BY", orderBys, "", "", ", ");
+            join(builder);
+            sqlAppender(builder, "GROUP BY", groupBy, "", "", ", ");
+            sqlAppender(builder, "HAVING", having, "(", ")", " AND ");
+            sqlAppender(builder, "ORDER BY", orderBy, "", "", ", ");
             limitOffset(builder, limit, offset);
 
             return builder.toString();
+        }
+
+        private void join(StringWrapper builder) {
+            sqlAppender(builder, "JOIN", join, "", "", " JOIN ");
+            sqlAppender(builder, "INNER JOIN", innerJoin, "", "", " INNER JOIN ");
+            sqlAppender(builder, "OUTER JOIN", outerJoin, "", "", " OUTER JOIN ");
+            sqlAppender(builder, "LEFT OUTER JOIN", leftOuterJoin, "", "", " LEFT OUTER JOIN ");
+            sqlAppender(builder, "RIGHT OUTER JOIN", rightOuterJoin, "", "", " RIGHT OUTER JOIN ");
         }
 
         private String insertQuery(StringWrapper builder) {
@@ -218,6 +278,7 @@ public class SQL {
 
         private String updateQuery(StringWrapper builder) {
             sqlAppender(builder, "UPDATE", tables, "", "", "");
+            join(builder);
             sqlAppender(builder, "SET", settings, "", "", ", ");
             sqlAppender(builder, "WHERE", whereConditions, "(", ")", " AND ");
             limitOffset(builder, limit, offset);
